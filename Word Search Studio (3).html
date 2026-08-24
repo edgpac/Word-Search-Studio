@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Search Studio — Playable</title>
+<style>
+:root{--ink:#1B1712;--ink2:#4A463F;--gold:#A87A32;--gold2:#8A6635;--cream:#F5EFE2;--paper:#FDFBF5;--line:#E5DCC9;--found:#C8E6C9;--select:#BBDEFB;--select-end:#90CAF9;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--cream);color:var(--ink);line-height:1.5}
+.top{background:var(--ink);color:var(--paper);padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.top h1{font-size:20px;font-weight:700;letter-spacing:.3px}
+.top .b{color:var(--gold);font-size:12px;letter-spacing:2px;text-transform:uppercase}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:0;min-height:calc(100vh - 56px)}
+@media(max-width:820px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--paper);border-right:1px solid var(--line);padding:24px;overflow:auto}
+.panel h2{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gold2);margin:18px 0 8px}
+.panel h2:first-child{margin-top:0}
+label{display:block;font-size:13px;color:var(--ink2);margin:10px 0 4px;font-weight:600}
+select,input[type=text],textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
+textarea{min-height:90px;resize:vertical}
+input[type=range]{width:100%}
+.rangeval{font-weight:700;color:var(--gold2)}
+.checks{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.checks label{display:flex;align-items:center;gap:5px;margin:0;font-weight:500;font-size:13px}
+.btn{width:100%;margin-top:16px;background:var(--gold2);color:#fff;border:none;padding:13px;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer}
+.btn:hover{background:var(--gold)}
+.btn.sec{background:#fff;color:var(--gold2);border:1px solid var(--line)}
+.btn.sec:hover{background:var(--cream)}
+.main{padding:28px;overflow:auto}
+.puzzle{background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px;max-width:760px;margin:0 auto;user-select:none}
+.ptitle{text-align:center;font-size:24px;font-weight:800;margin-bottom:4px}
+.psub{text-align:center;color:var(--ink2);font-size:13px;margin-bottom:12px}
+.progress{text-align:center;font-size:14px;font-weight:600;color:var(--gold2);margin-bottom:16px}
+table.grid{margin:0 auto;border-collapse:collapse;cursor:pointer}
+table.grid td{
+  width:36px;height:36px;text-align:center;
+  font-family:'Courier New',monospace;font-weight:700;font-size:20px;color:#000;
+  border-radius:50%;transition:background .12s;
+  position:relative;
+}
+table.grid td.found{background:var(--found)!important}
+table.grid td.selecting{background:var(--select)!important}
+table.grid td.select-start{background:var(--select-end)!important;box-shadow:0 0 0 2px var(--gold2)}
+.wordlist{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px 22px;justify-content:center}
+.wordlist span{font-size:15px;text-transform:lowercase;font-weight:600;padding:2px 6px;border-radius:4px;transition:all .2s}
+.wordlist span.found{text-decoration:line-through;color:#888;background:#E8F5E9}
+.hint{font-size:12px;color:var(--ink2);margin-top:6px}
+.play-hint{text-align:center;font-size:13px;color:var(--ink2);margin-bottom:14px}
+@media print{
+  .top,.panel,.actions,.play-hint{display:none!important}
+  .layout{display:block}.main{padding:0}.puzzle{border:none;max-width:100%}
+}
+.actions{max-width:760px;margin:16px auto 0;display:flex;gap:12px;flex-wrap:wrap}
+.actions .btn{margin-top:0;flex:1;min-width:140px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 24px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Word Search Studio — Playable</h1>
+  <span class="b">Ed &amp; Harmony</span>
+</div>
+<div class="layout">
+  <div class="panel">
+    <h2>Puzzle Settings</h2>
+    <label>Topic / Theme</label>
+    <select id="topic"></select>
+    <label>Custom words (optional — one per line, overrides theme)</label>
+    <textarea id="custom" placeholder="cat&#10;dog&#10;fish"></textarea>
+    <label>Number of words: <span class="rangeval" id="wcval">10</span></label>
+    <input type="range" id="wc" min="5" max="20" value="10">
+    <label>Puzzle title</label>
+    <input type="text" id="title" placeholder="Under the Sea">
+    <h2>Difficulty</h2>
+    <div class="checks">
+      <label><input type="checkbox" id="dAcross" checked> Across</label>
+      <label><input type="checkbox" id="dDown" checked> Down</label>
+      <label><input type="checkbox" id="dDiag" checked> Diagonal</label>
+      <label><input type="checkbox" id="dBack"> Backwards</label>
+    </div>
+    <div class="hint">More directions + backwards = harder.</div>
+    <button class="btn" onclick="generate()">Generate Puzzle</button>
+    <button class="btn sec" onclick="generate()">Shuffle Layout</button>
+    <button class="btn sec" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+  <div class="main">
+    <div class="puzzle" id="puzzle">
+      <div class="play-hint">Click and drag across letters to select a word. Release to check.</div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="toggleAnswers()" id="ansbtn">Show Answer Key</button>
+      <button class="btn sec" onclick="resetFound()">Reset Found Words</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const THEMES={
+ "Ocean / Under the Sea":{words:["OCTOPUS","DOLPHIN","STARFISH","SEAHORSE","CORAL","TURTLE","WHALE","CRAB","SHELL","WAVES","JELLYFISH","SHARK","FISH","BUBBLES","SEAWEED","PEARL","ANCHOR","SQUID","EEL","REEF"]},
+ "Outer Space":{words:["ROCKET","PLANET","GALAXY","COMET","ASTRONAUT","MOON","STARS","ORBIT","SATURN","METEOR","ALIEN","NEBULA","SPACESHIP","GRAVITY","TELESCOPE","MARS","VENUS","EARTH","SUN","COSMOS"]},
+ "Farm Animals":{words:["COW","HORSE","PIG","CHICKEN","SHEEP","GOAT","DUCK","ROOSTER","BARN","TRACTOR","FARMER","HAY","GOOSE","LAMB","DONKEY","FENCE","PONY","CALF","CORN","EGGS"]},
+ "Jungle Safari":{words:["LION","TIGER","ELEPHANT","MONKEY","GIRAFFE","ZEBRA","SNAKE","PARROT","JUNGLE","VINES","TOUCAN","GORILLA","LEOPARD","HIPPO","JAGUAR","FROG","LIZARD","PALM","RIVER","LEAVES"]},
+ "Dinosaurs":{words:["TREX","RAPTOR","STEGOSAURUS","TRICERATOPS","BRONTOSAURUS","FOSSIL","EGGS","VOLCANO","FERNS","CLAWS","DINOSAUR","BONES","JURASSIC","PTERODACTYL","SCALES","ROAR","TAIL","HORNS","CAVE","AMBER"]},
+ "Fruits & Food":{words:["APPLE","BANANA","ORANGE","GRAPES","MANGO","CHERRY","LEMON","PEACH","MELON","STRAWBERRY","PINEAPPLE","CARROT","TOMATO","COOKIE","CUPCAKE","BREAD","CHEESE","HONEY","PLUM","KIWI"]},
+ "Weather & Sky":{words:["SUN","RAIN","CLOUD","RAINBOW","SNOW","WIND","STORM","THUNDER","LIGHTNING","FOG","BREEZE","HAIL","FROST","SUNNY","CLOUDY","UMBRELLA","KITE","SKY","DROPS","MIST"]},
+ "Bugs & Insects":{words:["ANT","BEE","BUTTERFLY","LADYBUG","SPIDER","BEETLE","CRICKET","DRAGONFLY","MOTH","CATERPILLAR","GRASSHOPPER","SNAIL","WORM","FIREFLY","WASP","FLY","MANTIS","WEB","WINGS","HIVE"]},
+ "Fairy Tale":{words:["FAIRY","CASTLE","DRAGON","WAND","CROWN","PRINCESS","KNIGHT","MAGIC","UNICORN","WIZARD","POTION","TROLL","GNOME","MERMAID","SPELL","GIANT","QUEEN","KING","STARS","WISH"]},
+ "Christmas":{words:["SANTA","REINDEER","SLEIGH","GIFTS","TREE","SNOWMAN","STOCKING","BELLS","HOLLY","CANDYCANE","ORNAMENT","STAR","ELF","SNOW","WREATH","COOKIES","LIGHTS","GINGERBREAD","MISTLETOE","JOY"]},
+ "Halloween":{words:["PUMPKIN","GHOST","BAT","WITCH","CANDY","SPIDER","CAT","SKELETON","MOON","BROOM","POTION","SPOOKY","COSTUME","TREATS","WEB","MASK","OWL","HAUNTED","CAULDRON","BOO"]},
+ "Vehicles":{words:["CAR","TRUCK","BUS","TRAIN","PLANE","BOAT","BIKE","ROCKET","HELICOPTER","TRACTOR","AMBULANCE","FIRETRUCK","SCOOTER","VAN","JEEP","SUBWAY","FERRY","WAGON","TAXI","ROAD"]}
+};
+
+const topicSel=document.getElementById('topic');
+Object.keys(THEMES).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;topicSel.appendChild(o);});
+const custO=document.createElement('option');custO.value="__custom";custO.textContent="Custom (use words box)";topicSel.appendChild(custO);
+const wc=document.getElementById('wc'), wcval=document.getElementById('wcval');
+wc.oninput=()=>wcval.textContent=wc.value;
+
+let lastPlaced=[], lastGrid=[], showAns=false;
+let foundWords=new Set();          // words already found (uppercase)
+let foundCells=new Set();          // "x,y" cells that are permanently found
+let isSelecting=false;
+let selectStart=null;              // {x,y}
+let currentPath=[];                // array of {x,y}
+let currentWords=[];               // the word list for this puzzle
+
+function clean(w){return w.toUpperCase().normalize("NFD").replace(/[^A-Z]/g,"");}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function generate(){
+  showAns=false;
+  document.getElementById('ansbtn').textContent="Show Answer Key";
+  foundWords.clear();
+  foundCells.clear();
+  const topic=topicSel.value;
+  const customRaw=document.getElementById('custom').value.trim();
+  const usingCustom = (topic==="__custom" || customRaw.length>0);
+  let pool;
+  if(usingCustom){
+    pool=customRaw.split(/[\n,]+/).map(clean).filter(w=>w.length>=3);
+    if(pool.length===0){alert("Add some custom words (one per line), or pick a theme.");return;}
+  } else {
+    pool=THEMES[topic].words.map(clean).filter(w=>w.length>=3);
+  }
+  const n=Math.min(parseInt(wc.value), pool.length);
+  pool=shuffle(pool).slice(0,n);
+  currentWords=pool.slice();
+  const dirs=[];
+  if(document.getElementById('dAcross').checked)dirs.push([1,0]);
+  if(document.getElementById('dDown').checked)dirs.push([0,1]);
+  if(document.getElementById('dDiag').checked){dirs.push([1,1]);dirs.push([1,-1]);}
+  if(dirs.length===0){alert("Pick at least one direction.");return;}
+  const back=document.getElementById('dBack').checked;
+  const longest=Math.max(...pool.map(w=>w.length));
+  let size=Math.max(longest, Math.ceil(Math.sqrt(pool.reduce((s,w)=>s+w.length,0)*1.8)), 10);
+  size=Math.min(size,18);
+  let res=build(pool,size,dirs,back);
+  let tries=0;
+  while(res===null && tries<6){size++;res=build(pool,Math.min(size,20),dirs,back);tries++;}
+  if(res===null){alert("Couldn't fit all words — try fewer words or a bigger set.");return;}
+  lastGrid=res.grid;
+  lastPlaced=res.placed;
+  render();
+}
+
+function build(words,size,dirs,back){
+  const g=Array.from({length:size},()=>Array(size).fill(null));
+  const placed=[];
+  for(const raw of words.sort((a,b)=>b.length-a.length)){
+    let w=raw;
+    if(back && Math.random()<0.4) w=raw.split("").reverse().join("");
+    let ok=false;
+    for(let t=0;t<300 && !ok;t++){
+      const [dx,dy]=dirs[Math.floor(Math.random()*dirs.length)];
+      const x0=Math.floor(Math.random()*size), y0=Math.floor(Math.random()*size);
+      const xe=x0+dx*(w.length-1), ye=y0+dy*(w.length-1);
+      if(xe<0||xe>=size||ye<0||ye>=size)continue;
+      let good=true;
+      for(let i=0;i<w.length;i++){const c=g[y0+dy*i][x0+dx*i];if(c!==null&&c!==w[i]){good=false;break;}}
+      if(!good)continue;
+      const cells=[];
+      for(let i=0;i<w.length;i++){g[y0+dy*i][x0+dx*i]=w[i];cells.push([x0+dx*i,y0+dy*i]);}
+      placed.push({word:raw,cells});ok=true;
+    }
+    if(!ok)return null;
+  }
+  const A="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(g[y][x]===null)g[y][x]=A[Math.floor(Math.random()*26)];
+  return {grid:g,placed};
+}
+
+function render(){
+  const g=lastGrid;
+  if(!g.length)return;
+  const titleVal=document.getElementById('title').value || topicSel.value.split(" / ")[0] || "Word Search";
+  let html=`<div class="ptitle">${titleVal}</div>`;
+  html+=`<div class="progress" id="progress">${foundWords.size} / ${currentWords.length} words found</div>`;
+  html+=`<div class="play-hint">Click and drag across letters to select a word. Release to check.</div>`;
+  html+='<table class="grid" id="grid">';
+  const answerSet=new Set();
+  if(showAns) lastPlaced.forEach(p=>p.cells.forEach(([x,y])=>answerSet.add(x+","+y)));
+  for(let y=0;y<g.length;y++){
+    html+="<tr>";
+    for(let x=0;x<g.length;x++){
+      const key=x+","+y;
+      let cls="";
+      if(foundCells.has(key)) cls="found";
+      else if(answerSet.has(key)) cls="found"; // answer key also uses green
+      html+=`<td data-x="${x}" data-y="${y}" class="${cls}">${g[y][x]}</td>`;
+    }
+    html+="</tr>";
+  }
+  html+="</table>";
+  html+='<div class="wordlist" id="wordlist">';
+  currentWords.forEach(w=>{
+    const found=foundWords.has(w);
+    html+=`<span class="${found?'found':''}" data-word="${w}">${w.toLowerCase()}</span>`;
+  });
+  html+="</div>";
+  document.getElementById('puzzle').innerHTML=html;
+  attachGridEvents();
+}
+
+function attachGridEvents(){
+  const grid=document.getElementById('grid');
+  if(!grid)return;
+  // Mouse events
+  grid.addEventListener('mousedown', onStart);
+  grid.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onEnd);
+  // Touch support
+  grid.addEventListener('touchstart', e=>{e.preventDefault();onStart(e.touches[0]);},{passive:false});
+  grid.addEventListener('touchmove', e=>{e.preventDefault();onMove(e.touches[0]);},{passive:false});
+  document.addEventListener('touchend', onEnd);
+}
+
+function cellFromPoint(clientX, clientY){
+  const el=document.elementFromPoint(clientX, clientY);
+  if(el && el.tagName==='TD' && el.dataset.x!==undefined){
+    return {x:+el.dataset.x, y:+el.dataset.y, el};
+  }
+  return null;
+}
+
+function onStart(e){
+  const cell=cellFromPoint(e.clientX, e.clientY);
+  if(!cell)return;
+  isSelecting=true;
+  selectStart={x:cell.x, y:cell.y};
+  currentPath=[{x:cell.x, y:cell.y}];
+  updateSelectionUI();
+}
+
+function onMove(e){
+  if(!isSelecting || !selectStart)return;
+  const cell=cellFromPoint(e.clientX, e.clientY);
+  if(!cell)return;
+  // Build straight-line path from start to current cell
+  const path=getStraightPath(selectStart.x, selectStart.y, cell.x, cell.y);
+  if(path) {
+    currentPath=path;
+    updateSelectionUI();
+  }
+}
+
+function onEnd(){
+  if(!isSelecting)return;
+  isSelecting=false;
+  checkSelection();
+  clearSelectionUI();
+  selectStart=null;
+  currentPath=[];
+}
+
+function getStraightPath(x0,y0,x1,y1){
+  const dx=x1-x0, dy=y1-y0;
+  // Must be horizontal, vertical, or perfect diagonal
+  if(dx!==0 && dy!==0 && Math.abs(dx)!==Math.abs(dy)) return null;
+  const steps=Math.max(Math.abs(dx), Math.abs(dy));
+  if(steps===0) return [{x:x0,y:y0}];
+  const sx=dx===0?0:dx/Math.abs(dx);
+  const sy=dy===0?0:dy/Math.abs(dy);
+  const path=[];
+  for(let i=0;i<=steps;i++){
+    path.push({x:x0+i*sx, y:y0+i*sy});
+  }
+  return path;
+}
+
+function updateSelectionUI(){
+  // Clear previous selecting classes
+  document.querySelectorAll('td.selecting, td.select-start').forEach(td=>{
+    td.classList.remove('selecting','select-start');
+  });
+  currentPath.forEach((p,i)=>{
+    const td=document.querySelector(`td[data-x="${p.x}"][data-y="${p.y}"]`);
+    if(td){
+      td.classList.add(i===0?'select-start':'selecting');
+    }
+  });
+}
+
+function clearSelectionUI(){
+  document.querySelectorAll('td.selecting, td.select-start').forEach(td=>{
+    td.classList.remove('selecting','select-start');
+  });
+}
+
+function checkSelection(){
+  if(currentPath.length<2)return;
+  // Build the letter string
+  let word="";
+  currentPath.forEach(p=>word+=lastGrid[p.y][p.x]);
+  const reversed=word.split("").reverse().join("");
+  // Check against remaining words
+  let matched=null;
+  if(currentWords.includes(word) && !foundWords.has(word)) matched=word;
+  else if(currentWords.includes(reversed) && !foundWords.has(reversed)) matched=reversed;
+  if(matched){
+    foundWords.add(matched);
+    currentPath.forEach(p=>foundCells.add(p.x+","+p.y));
+    // Also mark the actual placed cells if they match (for consistency)
+    const placed=lastPlaced.find(p=>p.word===matched);
+    if(placed) placed.cells.forEach(([x,y])=>foundCells.add(x+","+y));
+    showToast("Found: " + matched.toLowerCase() + "!");
+    render(); // refresh to update word list + progress
+    if(foundWords.size===currentWords.length){
+      setTimeout(()=>showToast("🎉 Puzzle complete! Great job!"), 600);
+    }
+  }
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function toggleAnswers(){
+  showAns=!showAns;
+  document.getElementById('ansbtn').textContent=showAns?"Hide Answer Key":"Show Answer Key";
+  render();
+}
+
+function resetFound(){
+  foundWords.clear();
+  foundCells.clear();
+  render();
+  showToast("Progress reset");
+}
+
+// First puzzle
+generate();
+</script>
+</body>
+</html>
